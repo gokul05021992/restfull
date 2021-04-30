@@ -10,11 +10,47 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework import generics
 from rest_framework import mixins
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication,TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import viewsets
+from django.shortcuts import get_object_or_404
+
+class ArticleViewSet(viewsets.GenericViewSet,mixins.ListModelMixin,mixins.CreateModelMixin,mixins.UpdateModelMixin,mixins.RetrieveModelMixin,mixins.DestroyModelMixin):
+    serializer_class = ArticleSerializer
+    queryset = Article.objects.all()
+
+
+class rticleViewSet(viewsets.ViewSet):
+    def list(self,request):
+        article=Article.objects.all()
+        serial=ArticleSerializer(article,many=True)
+        return Response(serial.data)
+    def create(self,request):
+        serializer = ArticleSerializer(request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def retrieve(self,request,pk=None):
+        queryset=Article.objects.all()
+        article=get_object_or_404(queryset,pk=pk)
+        serializer=ArticleSerializer(article)
+        return Response(serializer.data)
+    def update(self,request,pk=None):
+        article = Article.objects.get(pk=pk)
+        serializer = ArticleSerializer(article, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors)
 
 class genericView(generics.GenericAPIView,mixins.ListModelMixin,mixins.CreateModelMixin,mixins.UpdateModelMixin,mixins.RetrieveModelMixin,mixins.DestroyModelMixin):
     serializer_class = ArticleSerializer
     queryset = Article.objects.all()
     lookup_field = 'id'
+    #authentication_classes =[SessionAuthentication, BasicAuthentication]
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
     def get(self,request,id=None):
         if id:
             return self.retrieve(request)
@@ -24,7 +60,7 @@ class genericView(generics.GenericAPIView,mixins.ListModelMixin,mixins.CreateMod
         return self.create(request)
     def put(self,request,id=None):
         return self.update(request,id)
-    def delete(self,request):
+    def delete(self,request,id=None):
         return self.destroy(request,id)
 
 
@@ -56,7 +92,7 @@ class articleWork(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
-    def delete(self,id,request):
+    def delete(self,request,id):
         article = self.get_object(id)
         article.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
